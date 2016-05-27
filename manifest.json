@@ -16,26 +16,5 @@
 
   "permissions": [
     "tabs", "<all_urls>"
-  ],
-
-  "web_accessible_resources": [
-    "Frames/(walkme.com/)/Scripts/settings.txt"
-    // "style/double-rainbow.css",
-    // "script/double-rainbow.js",
-    // "script/main.js",
-    // "templates/*"
-  ],
-
- "content_scripts": [
-    {
-    "all_frames": false,
-    "matches": ["<all_urls>"],
-    "exclude_matches": [],
-      "js": [
-        "js/jquery-2.1.4.min.js",
-        "content.js"
-      ]
-    }
   ]
-
 }

@@ -1,44 +1,86 @@
+//Listen for Settings.txt Info
 chrome.runtime.onMessage.addListener(function(request, sender) {
   if (request.action == "getSettings") {
-  	// console.log("request:",request.source);
-  	var awsUrl = "https://s3.amazonaws.com/s3.maketutorial.com/users/7a75f78cb4644e4188ad82d063b1f54b/settings.txt";
+  	//convert aws tag to aws url
+  	var awsTag = request.source;
+  	var url = [];
+  	var urlStart = awsTag.indexOf("https");
+  	var urlEnd = awsTag.indexOf(" id");
 
-		var xhr = new XMLHttpRequest();
-		xhr.addEventListener("load", reqListener);
-		xhr.open("GET", awsUrl);
-		xhr.send();
+  	for (var x=urlStart;x<urlEnd-1; x++){
+  		url.push(awsTag[x]);
+  	}
+  	var awsUrl = url.join("");
 
-		function reqListener () {
-		  var awsTag = this.responseText;
-		  console.log("awsTag",awsTag);
-		  var langs = ["English", "Spanish", "French", "Japanese", "Italian", "Chinese", "Portuguese", "German"];
-		  var len = langs.length;
-  		var siteLangs = [];
+		//if aws tag present
+  	if (awsTag !== 0 ){
 
-	  	for(var i=0; i<len; i++){
-	  		if(awsTag.indexOf(langs[i]) > -1){
-	  			siteLangs.push(langs[i]);
-	  		}
-	  	}
+  		//Sending GET request to Listener
+	  	var xhr = new XMLHttpRequest();
+			xhr.addEventListener("load", reqListener);
+			xhr.open("GET", awsUrl);
+			xhr.send();
 
-	  	var stringLangs = siteLangs.join(", ");
-	  	document.getElementById('langs').innerText = "Languages - " + stringLangs;
-	  	siteLangs = [];
-		}		
+			//Listener grabs settings.txt data, parses important segments, then appends them to popup window.
+			function reqListener () {
+			  var awsTag = this.responseText;
+			  var langs = ["English", "Spanish", "French", "Japanese", "Italian", "Chinese", "Portuguese", "German"];
+			  var len = langs.length;
+	  		var siteLangs = [];
 
+	  		//getting Language attribute
+		  	for(var i=0; i<len; i++){
+		  		if(awsTag.indexOf(langs[i]) > -1){
+		  			siteLangs.push(langs[i]);
+		  		}
+		  	}
+
+		  	var stringLangs = siteLangs.join(", ");
+		  	if(siteLangs.length === 0){
+		  		stringLangs = "N/A";
+		  	}
+		  	document.getElementById('langs').innerText = "Languages - " + stringLangs;
+
+		  	//getting Data attribute
+		  	var data = [];
+		  	var start = awsTag.indexOf("'DataFiles':");
+		  	var end = awsTag.indexOf("','languages':");
+		  	var diff = end - start;
+
+		  	for(var j = start+21; j< start+diff; j++){
+		  		data.push(awsTag[j]);
+		  	}
+		  	var siteData = data.join("");
+		  	document.getElementById('siteData').innerText = "DataFile - " + siteData;
+
+		  	//getting LibFile attribute
+		  	var lib = [];
+		  	var libStart = awsTag.indexOf("'LibFile':'");
+		  	var libEnd = awsTag.indexOf("','PreLibJsFile");
+		  	var dif = libEnd - libStart;
+
+		  	for(var k = libStart+11; k< libStart+dif; k++){
+		  		lib.push(awsTag[k]);
+		  	}
+		  	var siteLib = lib.join("");
+		  	document.getElementById('siteLib').innerText = "LibFile - " + siteLib;		  	
+		  	
+			}	
+
+  	}	
   }
 });
 
-
-
+//Listen for Script Tag Info
 chrome.runtime.onMessage.addListener(function(request, sender) {
   if (request.action == "getSource") {
   	var scriptTag = request.source;
 
 	  if (scriptTag === 0){
-	  	walkme.innerText = "Doesn’t contain the walkme code";
+	  	walkme.innerText = "No walkme code detected";
 	  }else{
 
+	  	//set each script attribute value
 	  	var async;
 	  	if(scriptTag.indexOf("async") > -1){
 	  		async = "True";
@@ -68,14 +110,14 @@ chrome.runtime.onMessage.addListener(function(request, sender) {
 	  	}	 		  		  	
 
 	  	var id = [];
-	  	var p1 = scriptTag.indexOf("/users/");
-	  	var p2 = p1 + 32;
+	  	var p = scriptTag.indexOf("/users/");
 
-	  	for(var j = p1+7; j< p1+39; j++){
+	  	for(var j = p+7; j< p+39; j++){
 	  		id.push(scriptTag[j]);
 	  	}
 	  	var userid = id.join("");
 
+	  	//append all set attributes to the popup page
 		  document.getElementById('walkme').innerText = "www.walkme.com - WalkMe Enabled";
 		  document.getElementById('details').innerText = "Details:";
 		  document.getElementById('userid').innerText = "User Id - " + userid;
@@ -83,14 +125,13 @@ chrome.runtime.onMessage.addListener(function(request, sender) {
 		  document.getElementById('https').innerText = "Is Https - " + https;
 		  document.getElementById('host').innerText = "Host - " + host;
 		  document.getElementById('async').innerText = "async - " + async;
-
-		  message.innerText = request.source;
 	  }
 
 
   }
 });
 
+//on load, will run getPagesSource.js (for walkme script tag) & getSettings for settings.txt file
 function onWindowLoad() {
 
   var message = document.getElementById('message');
@@ -98,7 +139,6 @@ function onWindowLoad() {
   chrome.tabs.executeScript(null, {
     file: "js/getPagesSource.js",
   }, function() {
-    // If you try and inject into an extensions page or the webstore/NTP you'll get an error
     if (chrome.runtime.lastError) {
       message.innerText = 'There was an error injecting script : \n' + chrome.runtime.lastError.message;
     }
@@ -107,13 +147,10 @@ function onWindowLoad() {
   chrome.tabs.executeScript(null, {
     file: "js/getSettings.js",
   }, function() {
-    // If you try and inject into an extensions page or the webstore/NTP you'll get an error
     if (chrome.runtime.lastError) {
       message.innerText = 'There was an error injecting script : \n' + chrome.runtime.lastError.message;
     }
   });
-
-  
 
 }
 
